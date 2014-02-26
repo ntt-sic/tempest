@@ -94,14 +94,6 @@ class BaseNetworkTest(tempest.test.BaseTestCase):
         # Clean up floating IPs
         for floating_ip in cls.floating_ips:
             cls.client.delete_floating_ip(floating_ip['id'])
-        # Clean up routers
-        for router in cls.routers:
-            resp, body = cls.client.list_router_interfaces(router['id'])
-            interfaces = body['ports']
-            for i in interfaces:
-                cls.client.remove_router_interface_with_subnet_id(
-                    router['id'], i['fixed_ips'][0]['subnet_id'])
-            cls.client.delete_router(router['id'])
         # Clean up health monitors
         for health_monitor in cls.health_monitors:
             cls.client.delete_health_monitor(health_monitor['id'])
@@ -114,6 +106,14 @@ class BaseNetworkTest(tempest.test.BaseTestCase):
         # Clean up pools
         for pool in cls.pools:
             cls.client.delete_pool(pool['id'])
+        # Clean up routers
+        for router in cls.routers:
+            resp, body = cls.client.list_router_interfaces(router['id'])
+            interfaces = body['ports']
+            for i in interfaces:
+                cls.client.remove_router_interface_with_subnet_id(
+                    router['id'], i['fixed_ips'][0]['subnet_id'])
+            cls.client.delete_router(router['id'])
         # Clean up metering label rules
         for metering_label_rule in cls.metering_label_rules:
             cls.admin_client.delete_metering_label_rule(
@@ -207,13 +207,20 @@ class BaseNetworkTest(tempest.test.BaseTestCase):
         return fip
 
     @classmethod
-    def create_pool(cls, name, lb_method, protocol, subnet):
+    def create_pool(cls, name, lb_method, protocol, subnet, provider=None,
+                    router=None):
         """Wrapper utility that returns a test pool."""
+        kwargs = {}
+        if provider:
+            kwargs['provider'] = provider
+        if router:
+            kwargs['router_id'] = router['id']
         resp, body = cls.client.create_pool(
             name=name,
             lb_method=lb_method,
             protocol=protocol,
-            subnet_id=subnet['id'])
+            subnet_id=subnet['id'],
+            **kwargs)
         pool = body['pool']
         cls.pools.append(pool)
         return pool
